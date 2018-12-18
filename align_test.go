@@ -21,6 +21,9 @@ func TestTemplate(t *testing.T) {
 	err = align.AddSequence("testing/S13-SH8.seq")
 	assert.Nil(t, err)
 
+	err = align.AddSequence("testing/S13-SH93.seq")
+	assert.Nil(t, err)
+
 	err = align.AddSequence("testing/S13-SH10.seq")
 	assert.Nil(t, err)
 

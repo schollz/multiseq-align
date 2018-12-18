@@ -2,6 +2,7 @@ package multiseqalign
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/schollz/progressbar"
@@ -33,7 +34,20 @@ func New(TemplateFile string) (a *Alignment, err error) {
 	return
 }
 
-func (a *Alignment) AddSequence(sequenceFile string) (err error) {
+func ImportSequence(sequenceFile string) (seq Sequence, err error) {
+	fasta, err := ImportFasta(sequenceFile)
+	if err != nil {
+		return
+	}
+	seq = Sequence{Fasta: fasta, SequenceMap: make(map[int]rune)})
+	for i, r := range seq.Fasta.Sequence {
+		seq.SequenceMap[i] = r
+	}
+return
+}
+
+// AlignSequences will align sequence2 to sequence1
+func AlignSequences(sequence1, sequence2 Sequence) (err error) {
 	fasta, err := ImportFasta(sequenceFile)
 	if err != nil {
 		return
@@ -43,6 +57,8 @@ func (a *Alignment) AddSequence(sequenceFile string) (err error) {
 	for i, r := range a.Sequences[sI].Fasta.Sequence {
 		a.Sequences[sI].SequenceMap[i] = r
 	}
+
+	fmt.Printf("\naligning %s\n", a.Sequences[sI].Fasta.Header)
 
 	// align sequence
 	// TODO: determine if reverse complement is a better fit and automatically switch sequence
@@ -84,6 +100,7 @@ func (a *Alignment) AddSequence(sequenceFile string) (err error) {
 		}
 	}
 	if bestMatchesRevComp > bestMatches {
+		fmt.Println("using reverse complement")
 		a.Sequences[sI] = revComp
 		a.Sequences[sI].Offset = bestIRevComp
 	} else {
@@ -94,6 +111,13 @@ func (a *Alignment) AddSequence(sequenceFile string) (err error) {
 }
 
 func (a *Alignment) Print() {
+	os.Remove("alignment.txt")
+	f, err := os.Create("alignment.txt")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
 	// create aligned template
 	templateAligned := make(map[int][]rune)
 	for i := range a.Template.SequenceMap {
@@ -147,19 +171,23 @@ func (a *Alignment) Print() {
 				continue
 			}
 			if lineI == 1 {
-				fmt.Printf("%5d*", i+1)
+				f.WriteString(fmt.Sprintf("%5d ", i+1))
+			} else if lineI == 0 {
+				f.WriteString("      *")
 			} else {
-				fmt.Print("      ")
+				f.WriteString("      ")
 			}
-			fmt.Print(line)
+			f.WriteString(line)
 			if lineI == 1 {
-				fmt.Printf("*%5d", i+61)
+				f.WriteString(fmt.Sprintf(" %5d", i+61))
+			} else if lineI == 0 {
+				f.WriteString("*     ")
 			} else {
-				fmt.Print("      ")
+				f.WriteString("      ")
 			}
-			fmt.Print("\n")
+			f.WriteString("\n")
 		}
-		fmt.Println(" ")
+		f.WriteString("\n\n")
 		i += 60
 		if i > len(templateAligned) {
 			break
