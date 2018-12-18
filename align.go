@@ -67,6 +67,7 @@ func (a *Alignment) AddSequence(sequenceFile string) (err error) {
 	}
 	fmt.Println(bestMatches, bestI)
 	a.Sequences[sI].Offset = bestI
+
 	return
 }
 
