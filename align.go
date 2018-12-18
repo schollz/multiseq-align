@@ -141,12 +141,23 @@ func (a *Alignment) Print() {
 				lines[k] += " "
 			}
 		}
-		for _, line := range lines {
+		for lineI, line := range lines {
 			line = strings.Replace(line, " ", "", -1)
 			if len(line) == 0 {
 				continue
 			}
-			fmt.Println(line)
+			if lineI == 1 {
+				fmt.Printf("%5d*", i+1)
+			} else {
+				fmt.Print("      ")
+			}
+			fmt.Print(line)
+			if lineI == 1 {
+				fmt.Printf("*%5d", i+61)
+			} else {
+				fmt.Print("      ")
+			}
+			fmt.Print("\n")
 		}
 		fmt.Println(" ")
 		i += 60
