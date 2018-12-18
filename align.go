@@ -50,7 +50,7 @@ func (a *Alignment) AddSequence(sequenceFile string) (err error) {
 	templateLength := len(a.Template.Fasta.Sequence)
 	bestMatches := 0
 	bestI := 0
-	bar := progressbar.New(templateLength - sequenceLength)
+	bar := progressbar.New(2 * (templateLength - sequenceLength))
 	for i := 0; i < templateLength-sequenceLength; i++ {
 		bar.Add(1)
 		// count how many match
@@ -65,8 +65,30 @@ func (a *Alignment) AddSequence(sequenceFile string) (err error) {
 			bestI = i
 		}
 	}
-	fmt.Println(bestMatches, bestI)
-	a.Sequences[sI].Offset = bestI
+
+	revComp := ReverseComplement(a.Sequences[sI])
+	bestMatchesRevComp := 0
+	bestIRevComp := 0
+	for i := 0; i < templateLength-sequenceLength; i++ {
+		bar.Add(1)
+		// count how many match
+		matches := 0
+		for j := range revComp.SequenceMap {
+			if revComp.SequenceMap[j] == a.Template.SequenceMap[j+i] {
+				matches++
+			}
+		}
+		if matches > bestMatchesRevComp {
+			bestMatchesRevComp = matches
+			bestIRevComp = i
+		}
+	}
+	if bestMatchesRevComp > bestMatches {
+		a.Sequences[sI] = revComp
+		a.Sequences[sI].Offset = bestIRevComp
+	} else {
+		a.Sequences[sI].Offset = bestI
+	}
 
 	return
 }

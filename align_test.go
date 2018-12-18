@@ -32,5 +32,9 @@ func TestTemplate(t *testing.T) {
 	assert.Nil(t, err)
 	fmt.Println(len(align.Sequences))
 
+	err = align.AddSequence("testing/S13-SH93.seq")
+	assert.Nil(t, err)
+	fmt.Println(len(align.Sequences))
+
 	align.Print()
 }
