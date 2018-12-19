@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/schollz/progressbar"
 )
@@ -11,6 +12,7 @@ import (
 type Alignment struct {
 	Template  Sequence
 	Sequences []Sequence
+	sync.RWMutex
 }
 
 type Sequence struct {
@@ -39,31 +41,26 @@ func ImportSequence(sequenceFile string) (seq Sequence, err error) {
 	if err != nil {
 		return
 	}
-	seq = Sequence{Fasta: fasta, SequenceMap: make(map[int]rune)})
+	seq = Sequence{Fasta: fasta, SequenceMap: make(map[int]rune)}
 	for i, r := range seq.Fasta.Sequence {
 		seq.SequenceMap[i] = r
 	}
-return
+	return
 }
 
-// AlignSequences will align sequence2 to sequence1
-func AlignSequences(sequence1, sequence2 Sequence) (err error) {
-	fasta, err := ImportFasta(sequenceFile)
-	if err != nil {
-		return
-	}
-	a.Sequences = append(a.Sequences, Sequence{Fasta: fasta, SequenceMap: make(map[int]rune)})
-	sI := len(a.Sequences) - 1
-	for i, r := range a.Sequences[sI].Fasta.Sequence {
-		a.Sequences[sI].SequenceMap[i] = r
-	}
+func (a *Alignment) AddAlignedSequence(s Sequence) {
+	a.Lock()
+	defer a.Unlock()
+	a.Sequences = append(a.Sequences, s)
+}
 
-	fmt.Printf("\naligning %s\n", a.Sequences[sI].Fasta.Header)
+// AlignSequences will align sequence2 to sequence1 and return the aligned sequence
+func AlignSequences(s1, s2 Sequence) (sNew Sequence, err error) {
+	fmt.Printf("\naligning %s\n", s2.Fasta.Header)
 
 	// align sequence
-	// TODO: determine if reverse complement is a better fit and automatically switch sequence
-	sequenceLength := len(a.Sequences[sI].Fasta.Sequence)
-	templateLength := len(a.Template.Fasta.Sequence)
+	sequenceLength := len(s2.Fasta.Sequence)
+	templateLength := len(s1.Fasta.Sequence)
 	bestMatches := 0
 	bestI := 0
 	bar := progressbar.New(2 * (templateLength - sequenceLength))
@@ -71,8 +68,8 @@ func AlignSequences(sequence1, sequence2 Sequence) (err error) {
 		bar.Add(1)
 		// count how many match
 		matches := 0
-		for j := range a.Sequences[sI].SequenceMap {
-			if a.Sequences[sI].SequenceMap[j] == a.Template.SequenceMap[j+i] {
+		for j := range s2.SequenceMap {
+			if s2.SequenceMap[j] == s1.SequenceMap[j+i] {
 				matches++
 			}
 		}
@@ -82,7 +79,7 @@ func AlignSequences(sequence1, sequence2 Sequence) (err error) {
 		}
 	}
 
-	revComp := ReverseComplement(a.Sequences[sI])
+	revComp := ReverseComplement(s2)
 	bestMatchesRevComp := 0
 	bestIRevComp := 0
 	for i := 0; i < templateLength-sequenceLength; i++ {
@@ -90,7 +87,7 @@ func AlignSequences(sequence1, sequence2 Sequence) (err error) {
 		// count how many match
 		matches := 0
 		for j := range revComp.SequenceMap {
-			if revComp.SequenceMap[j] == a.Template.SequenceMap[j+i] {
+			if revComp.SequenceMap[j] == s1.SequenceMap[j+i] {
 				matches++
 			}
 		}
@@ -99,12 +96,13 @@ func AlignSequences(sequence1, sequence2 Sequence) (err error) {
 			bestIRevComp = i
 		}
 	}
+	sNew = s2
 	if bestMatchesRevComp > bestMatches {
 		fmt.Println("using reverse complement")
-		a.Sequences[sI] = revComp
-		a.Sequences[sI].Offset = bestIRevComp
+		sNew = revComp
+		sNew.Offset = bestIRevComp
 	} else {
-		a.Sequences[sI].Offset = bestI
+		sNew.Offset = bestI
 	}
 
 	return
@@ -173,7 +171,7 @@ func (a *Alignment) Print() {
 			if lineI == 1 {
 				f.WriteString(fmt.Sprintf("%5d ", i+1))
 			} else if lineI == 0 {
-				f.WriteString("      *")
+				f.WriteString("     *")
 			} else {
 				f.WriteString("      ")
 			}
